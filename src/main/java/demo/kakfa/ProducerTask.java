@@ -37,7 +37,7 @@ public class ProducerTask implements Callable<Long> {
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         /**  Properties for reliable at-least-once processing -- START */
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, (String) controlMap.get("broker"));
         props.put(ProducerConfig.ACKS_CONFIG, "all");
         //props.put(ProducerConfig.RETRIES_CONFIG, 0);
         props.put(ProducerConfig.LINGER_MS_CONFIG, "0");
@@ -107,6 +107,6 @@ public class ProducerTask implements Callable<Long> {
         } catch (Exception e) {
             LOGGER.error("Error in send msg  to topic - {}", record.topic()); //TODO - add more info?
         }
-        
+
     }
 }

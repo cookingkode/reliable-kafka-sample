@@ -1,7 +1,7 @@
 package demo.kakfa;
 
+import org.apache.commons.cli.*;
 import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,24 +10,48 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-public class Producer {
+public class Driver {
     private static final String TOPIC = "test";
     private static final int numTasks = 5;
+    final static Logger LOGGER = LoggerFactory.getLogger(Driver.class);
 
     @SuppressWarnings("InfiniteLoopStatement")
     public static void main(final String[] args) {
-        final Logger LOGGER = LoggerFactory.getLogger(Producer.class);
 
-        final Properties props = new Properties();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-        props.put(ProducerConfig.ACKS_CONFIG, "all");
-        props.put(ProducerConfig.RETRIES_CONFIG, 0);
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        // create Options object
+        Options options = new Options();
+        // add t option
+        options.addOption("producer", false, "start a kafka producer");
+        options.addOption("consumer", false, "start a kafka consumer");
+        options.addOption("brokers", true, "kafkabroker");
+        CommandLineParser parser = new DefaultParser();
 
+        HelpFormatter formatter = new HelpFormatter();
+        formatter.printHelp( "ant", options );
+
+        try {
+            // parse the command line arguments
+            CommandLine line = parser.parse( options, args );
+
+            String broker = line.getOptionValue("brokers", "localhost:9092");
+            if (line.hasOption("producer")) {
+                producerDriver(broker);
+            } else {
+                consumerDriver();
+            }
+        }
+        catch( ParseException exp ) {
+            // oops, something went wrong
+            System.err.println( "Parsing failed.  Reason: " + exp.getMessage() );
+        }
+
+
+
+    }
+
+    public static void producerDriver(String broker){
         ExecutorService executor = Executors.newFixedThreadPool(numTasks);
         List<Callable<Long>> tasks = new ArrayList<Callable<Long>>();
 
@@ -39,6 +63,7 @@ public class Producer {
             thisTasksMap.put("target", new Long(2)); // number of messages to send
             //thisTasksMap.put("target", Math.round(Math.random() * 10)); // number of messages to send
             thisTasksMap.put("topic-name", TOPIC);
+            thisTasksMap.put("broker", broker);
             tasks.add(new ProducerTask(i, thisTasksMap));
             controlMaps.add(i, thisTasksMap);
         }
@@ -76,4 +101,10 @@ public class Producer {
         executor.shutdown();
 
     }
+
+    public static void consumerDriver() {
+    }
+
 }
+
+
