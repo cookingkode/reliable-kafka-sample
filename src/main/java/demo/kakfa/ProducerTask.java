@@ -95,20 +95,18 @@ public class ProducerTask implements Callable<Long> {
         try {
             sendResult = future.get(); // even if the producer returns FutureFailure, the get will throw the original exception
             if (sendResult != null) { // log only if there is send result is not null (will happen in case of adding to cache)
-                LOGGER.info("[deadshot] Send to kafka successful, topic - {}, partition - {}, offset - {}",
+                LOGGER.info("\t\tSend to kafka successful, topic - {}, partition - {}, offset - {}",
                         sendResult.topic(), sendResult.partition(),
                         sendResult.offset());
             }
         } catch (ExecutionException e) {
-            LOGGER.error("[deadshot] ExecutionException while kafka send to topic - {}", record.topic(), e);
+            LOGGER.error("ExecutionException while kafka send to topic - {}", record.topic(), e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            LOGGER.error("[deadshot] InterruptedException while kafka send to topic - {}", record.topic(), e);
+            LOGGER.error("InterruptedException while kafka send to topic - {}", record.topic(), e);
         } catch (Exception e) {
-            LOGGER.error("[deadshot] Error in send msg  to topic - {}", record.topic()); //TODO - add more info?
+            LOGGER.error("Error in send msg  to topic - {}", record.topic()); //TODO - add more info?
         }
-
-        LOGGER.info("\t\tsent message part=%d offset=%d\n", sendResult.partition(), sendResult.offset());
-
+        
     }
 }
