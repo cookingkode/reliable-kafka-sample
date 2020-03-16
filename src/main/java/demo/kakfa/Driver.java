@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.*;
@@ -25,7 +26,7 @@ public class Driver {
         // add t option
         options.addOption("producer", false, "start a kafka producer");
         options.addOption("consumer", false, "start a kafka consumer");
-        options.addOption("brokers", true, "kafkabroker");
+        options.addOption("brokers", true, "kafka brokers to connect");
         CommandLineParser parser = new DefaultParser();
 
         HelpFormatter formatter = new HelpFormatter();
@@ -39,7 +40,7 @@ public class Driver {
             if (line.hasOption("producer")) {
                 producerDriver(broker);
             } else {
-                consumerDriver();
+                consumerDriver(broker);
             }
         }
         catch( ParseException exp ) {
@@ -48,9 +49,9 @@ public class Driver {
         }
 
 
-
     }
 
+    /** Kafka message producer*/
     public static void producerDriver(String broker){
         ExecutorService executor = Executors.newFixedThreadPool(numTasks);
         List<Callable<Long>> tasks = new ArrayList<Callable<Long>>();
@@ -68,7 +69,7 @@ public class Driver {
             controlMaps.add(i, thisTasksMap);
         }
 
-        Long totalMessages = new Long(0);
+        Long totalMessagesSent = new Long(0);
 
         // Execute
         try {
@@ -76,10 +77,8 @@ public class Driver {
             for (Callable<Long> c : tasks) {
                 result.add(executor.submit(c));
             }
-
             LOGGER.info("Tasks started");
-
-            totalMessages = result.stream()
+            totalMessagesSent = result.stream()
                     .map(future -> {
                         Long res = new Long(0);
                         try {
@@ -90,19 +89,29 @@ public class Driver {
                         return res;
                     })
                     .collect(Collectors.summingLong(Long::longValue));
-
-
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-
-        System.out.printf("Total messages sent : %d\n", totalMessages);
+        LOGGER.info("Total messages sent : ", totalMessagesSent);
         executor.shutdown();
-
     }
 
-    public static void consumerDriver() {
+    /** Kafka message consumer*/
+    public static void consumerDriver(String broker) {
+        ConcurrentMap consControlMap = new ConcurrentHashMap<String, Object>();
+
+        CountDownLatch latch = new CountDownLatch(1);
+        consControlMap.put("broker", broker);
+        KafkaContainer theContainer = new KafkaContainer(Arrays.asList(TOPIC),consControlMap);
+        theContainer.start();
+        try {
+            latch.await(); // TODO wait indefintely
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+
     }
 
 }

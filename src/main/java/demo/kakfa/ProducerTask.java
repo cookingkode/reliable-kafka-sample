@@ -15,7 +15,7 @@ import java.util.concurrent.*;
 
 public class ProducerTask implements Callable<Long> {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProducerTask.class);
-    private int id;
+    private int producerId;
     private ConcurrentMap<String, Object> controlMap;
     private String topic;
     private KafkaProducer<String, String> producer;
@@ -25,9 +25,9 @@ public class ProducerTask implements Callable<Long> {
     // Hence kept per-thead to allow more IO concurrency
     private KafkaProducer<String, String> kafkaProducer;
 
-    public ProducerTask(Integer id, ConcurrentMap<String, Object> controlMap) {
+    public ProducerTask(Integer producerId, ConcurrentMap<String, Object> controlMap) {
         this.controlMap = controlMap;
-        this.id = id;
+        this.producerId = producerId;
         this.topic = (String) controlMap.get("topic-name");
         this.nMessagesTarget = (Long) controlMap.get("target");
 
