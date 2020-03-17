@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class KafkaContainer extends Thread {
     private final AtomicBoolean closed = new AtomicBoolean(false);
@@ -21,9 +22,10 @@ public class KafkaContainer extends Thread {
 
     private KafkaConsumer<String, String> consumer; // NOT thread-safe
 
+    private ConcurrentMap<String,Object> controlMap;
+
     // kafka poll timeout
     private Duration pollTimeout;
-
 
     public enum WorkResponse {
         SUCCESS, FAILURE, DISCARD;
@@ -31,6 +33,7 @@ public class KafkaContainer extends Thread {
 
 
     public KafkaContainer( List<String> topics, ConcurrentMap<String, Object> controlMap ) {
+        this.controlMap = controlMap;
 
         final Properties props = new Properties();
         props.put(ConsumerConfig.GROUP_ID_CONFIG, controlMap.getOrDefault("groupId", "reliable-cons"));
@@ -72,7 +75,7 @@ public class KafkaContainer extends Thread {
 
     private WorkResponse handleWork(String Id, Event e) {
         // just print
-        LOGGER.info("event received ", Id, e);
+        LOGGER.info("event received Id : {} ", Id);
 
         //TODO
         return WorkResponse.SUCCESS;
@@ -91,6 +94,7 @@ public class KafkaContainer extends Thread {
         switch (workResponse) {
             case SUCCESS:
                 //  flush senders - TODO
+                ((AtomicLong)this.controlMap.get("total-messages")).getAndIncrement();
                 break;
             case DISCARD:
                 sendDiscardedMsgToBadTopic(record);

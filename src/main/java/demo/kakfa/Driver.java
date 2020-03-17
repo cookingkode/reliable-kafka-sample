@@ -1,26 +1,24 @@
 package demo.kakfa;
 
 import org.apache.commons.cli.*;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Properties;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class Driver {
     private static final String TOPIC = "test";
-    private static final int numTasks = 5;
+    private static final int numProducers = 5;
+    private static final int numConsumers = 5;
     final static Logger LOGGER = LoggerFactory.getLogger(Driver.class);
 
     @SuppressWarnings("InfiniteLoopStatement")
     public static void main(final String[] args) {
-
         // create Options object
         Options options = new Options();
         // add t option
@@ -53,12 +51,12 @@ public class Driver {
 
     /** Kafka message producer*/
     public static void producerDriver(String broker){
-        ExecutorService executor = Executors.newFixedThreadPool(numTasks);
+        ExecutorService executor = Executors.newFixedThreadPool(numProducers);
         List<Callable<Long>> tasks = new ArrayList<Callable<Long>>();
 
         // Prep
         List<ConcurrentMap<String, Object>> controlMaps = new ArrayList<>();
-        for (int i = 0; i < numTasks; i++) {
+        for (int i = 0; i < numProducers; i++) {
             ConcurrentMap thisTasksMap = new ConcurrentHashMap<String, Object>();
             thisTasksMap.put("test_key", "test_val"); // just a test
             thisTasksMap.put("target", new Long(2)); // number of messages to send
@@ -93,22 +91,40 @@ public class Driver {
             e.printStackTrace();
         }
 
-        LOGGER.info("Total messages sent : ", totalMessagesSent);
+        LOGGER.info("Total messages sent : {} ", totalMessagesSent);
         executor.shutdown();
     }
 
     /** Kafka message consumer*/
     public static void consumerDriver(String broker) {
-        ConcurrentMap consControlMap = new ConcurrentHashMap<String, Object>();
+        List<ConcurrentMap<String,Object>> concurrentMaps = new ArrayList<>();
+        int i;
+        for (i=0; i<numConsumers; i++) {
+            ConcurrentMap consControlMap = new ConcurrentHashMap<String, Object>();
+            consControlMap.put("broker", broker);
+            consControlMap.put("total-messages", new AtomicLong(0));
+            consControlMap.put("dropped-messages", new AtomicLong(0));
+            concurrentMaps.add(consControlMap);
 
-        CountDownLatch latch = new CountDownLatch(1);
-        consControlMap.put("broker", broker);
-        KafkaContainer theContainer = new KafkaContainer(Arrays.asList(TOPIC),consControlMap);
-        theContainer.start();
-        try {
-            latch.await(); // TODO wait indefintely
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            KafkaContainer theContainer = new KafkaContainer(Arrays.asList(TOPIC), consControlMap);
+            theContainer.start();
+        }
+
+        while (true) {
+            try {
+                Thread.sleep(1000);
+                Long totalMessages = 0L;
+                for (i=0; i<numConsumers; i++){
+                    totalMessages += ((AtomicLong)
+                            concurrentMaps.get(i).getOrDefault("total-messages",new AtomicLong(0))).get();
+                }
+
+                LOGGER.info("Total messages consumed = {}\n", totalMessages);
+
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
         }
 
 
