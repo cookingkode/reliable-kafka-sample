@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class ProducerTask implements Callable<Long> {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProducerTask.class);
@@ -20,6 +21,7 @@ public class ProducerTask implements Callable<Long> {
     private String topic;
     private KafkaProducer<String, String> producer;
     private Long nMessagesTarget;
+    private AtomicLong totalMessagesCount;
 
     // KafkaProducer is thread-safe, but has single background IO thread.
     // Hence kept per-thead to allow more IO concurrency
@@ -46,9 +48,14 @@ public class ProducerTask implements Callable<Long> {
 
         this.producer = new KafkaProducer<String, String>(props);
 
+        totalMessagesCount = (AtomicLong) this.controlMap.get("total-messages");
+        if (totalMessagesCount == null) {
+            totalMessagesCount = new AtomicLong(0); // just for the rest of the code to be safe
+        }
+
     }
 
-    private void sendMessage(long i) throws Exception {
+    private boolean sendMessage(long i) throws Exception {
         Event.EventBuilder eventBuilder = new Event.EventBuilder();
         // correlation id
         String id = UUID.randomUUID().toString();
@@ -71,25 +78,27 @@ public class ProducerTask implements Callable<Long> {
         //make durable
         this.producer.flush();
         //get results
-        extractSendResultAndLog(record, future);
+        return extractSendResultAndLog(record, future);
 
     }
 
     public Long call() throws Exception {
         long i;
         for (i = 0; i < this.nMessagesTarget; i++) {
-            this.sendMessage(i);
+            if (this.sendMessage(i) ) {
+                totalMessagesCount.getAndIncrement();
+            }
             if ("true".equals(controlMap.getOrDefault("stop-producing", "false"))) {
                 System.out.printf("\tStopping thread %d , messages so far", i);
                 return i;
             }
-            Thread.sleep(500);
+            Thread.sleep(100);
         }
 
         return i;
     }
 
-    private void extractSendResultAndLog(ProducerRecord<String, String> record, Future<RecordMetadata> future) {
+    private boolean extractSendResultAndLog(ProducerRecord<String, String> record, Future<RecordMetadata> future) {
         RecordMetadata sendResult = null;
 
         try {
@@ -98,6 +107,7 @@ public class ProducerTask implements Callable<Long> {
                 LOGGER.info("\t\tSend to kafka successful, topic - {}, partition - {}, offset - {}",
                         sendResult.topic(), sendResult.partition(),
                         sendResult.offset());
+                return true;
             }
         } catch (ExecutionException e) {
             LOGGER.error("ExecutionException while kafka send to topic - {}", record.topic(), e);
@@ -108,5 +118,6 @@ public class ProducerTask implements Callable<Long> {
             LOGGER.error("Error in send msg  to topic - {}", record.topic()); //TODO - add more info?
         }
 
+        return false;
     }
 }

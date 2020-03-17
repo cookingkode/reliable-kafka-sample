@@ -57,14 +57,14 @@ public class Driver {
         // Prep
         List<ConcurrentMap<String, Object>> controlMaps = new ArrayList<>();
         for (int i = 0; i < numProducers; i++) {
-            ConcurrentMap thisTasksMap = new ConcurrentHashMap<String, Object>();
-            thisTasksMap.put("test_key", "test_val"); // just a test
-            thisTasksMap.put("target", new Long(2)); // number of messages to send
-            //thisTasksMap.put("target", Math.round(Math.random() * 10)); // number of messages to send
-            thisTasksMap.put("topic-name", TOPIC);
-            thisTasksMap.put("broker", broker);
-            tasks.add(new ProducerTask(i, thisTasksMap));
-            controlMaps.add(i, thisTasksMap);
+            ConcurrentMap prodControlMap = new ConcurrentHashMap<String, Object>();
+            prodControlMap.put("test_key", "test_val"); // just a test
+            prodControlMap.put("target", new Long(2)); // number of messages to send
+            prodControlMap.put("total-messages", new AtomicLong(0));
+            prodControlMap.put("topic-name", TOPIC);
+            prodControlMap.put("broker", broker);
+            tasks.add(new ProducerTask(i, prodControlMap));
+            controlMaps.add(i, prodControlMap);
         }
 
         Long totalMessagesSent = new Long(0);
