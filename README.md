@@ -54,3 +54,14 @@ In addition, the consumer demonstrates how to achieve idempotency using the 'id'
 
 
 ## Usage
+
+- Many tunebales ( brokerstring, topic, etc) are defined in ```application.properties```
+
+- To run the Producer , use this on the command line
+``java -Dserver.port=9090 -jar target/reliable-kafka-sample-1.0-SNAPSHOT.jar  -producer``
+
+- To run the Consumer , use this on the command line
+``java -Dserver.port=9090 -jar target/reliable-kafka-sample-1.0-SNAPSHOT.jar  -consumer``
+
+- For the long-running consumer, one can navitage to ```http://localhost:8080/h2-console/``` to get an UI interface for 
+the events DB.
