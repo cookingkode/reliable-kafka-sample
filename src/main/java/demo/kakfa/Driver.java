@@ -3,6 +3,11 @@ package demo.kakfa;
 import org.apache.commons.cli.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -11,14 +16,36 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-public class Driver {
-    private static final String TOPIC = "test";
-    private static final int numProducers = 5;
-    private static final int numConsumers = 5;
+
+@SpringBootApplication
+public class Driver implements CommandLineRunner {
     final static Logger LOGGER = LoggerFactory.getLogger(Driver.class);
 
-    @SuppressWarnings("InfiniteLoopStatement")
-    public static void main(final String[] args) {
+    @Autowired
+    private EventService eventService;
+
+    @Value("${kafka.consumer.nthreads}")
+    private int numConsumers;
+
+    @Value("${kafka.topic.name}")
+    private String topic;
+
+    @Value("${kafka.brokers}")
+    private String brokers;
+
+    @Value("${kafka.producer.nthreads}")
+    private int numProducers;
+
+
+    public static void main(String[] args) {
+        SpringApplication.run(Driver.class, args);
+    }
+
+    @Override
+    public void run(String... argsList) {
+        this.driver(argsList);
+    }
+    public  void driver(final String[] args) {
         // create Options object
         Options options = new Options();
         // add t option
@@ -34,7 +61,7 @@ public class Driver {
             // parse the command line arguments
             CommandLine line = parser.parse( options, args );
 
-            String broker = line.getOptionValue("brokers", "localhost:9092");
+            String broker = line.getOptionValue("brokers", brokers); // override props from cmd line
             if (line.hasOption("producer")) {
                 producerDriver(broker);
             } else {
@@ -50,7 +77,7 @@ public class Driver {
     }
 
     /** Kafka message producer*/
-    public static void producerDriver(String broker){
+    public  void producerDriver(String broker){
         ExecutorService executor = Executors.newFixedThreadPool(numProducers);
         List<Callable<Long>> tasks = new ArrayList<Callable<Long>>();
 
@@ -59,9 +86,9 @@ public class Driver {
         for (int i = 0; i < numProducers; i++) {
             ConcurrentMap prodControlMap = new ConcurrentHashMap<String, Object>();
             prodControlMap.put("test_key", "test_val"); // just a test
-            prodControlMap.put("target", new Long(2)); // number of messages to send
+            prodControlMap.put("target", new Long(4)); // number of messages to send
             prodControlMap.put("total-messages", new AtomicLong(0));
-            prodControlMap.put("topic-name", TOPIC);
+            prodControlMap.put("topic-name", topic);
             prodControlMap.put("broker", broker);
             tasks.add(new ProducerTask(i, prodControlMap));
             controlMaps.add(i, prodControlMap);
@@ -96,7 +123,7 @@ public class Driver {
     }
 
     /** Kafka message consumer*/
-    public static void consumerDriver(String broker) {
+    public  void consumerDriver(String broker) {
         List<ConcurrentMap<String,Object>> concurrentMaps = new ArrayList<>();
         int i;
         for (i=0; i<numConsumers; i++) {
@@ -106,7 +133,7 @@ public class Driver {
             consControlMap.put("dropped-messages", new AtomicLong(0));
             concurrentMaps.add(consControlMap);
 
-            KafkaContainer theContainer = new KafkaContainer(Arrays.asList(TOPIC), consControlMap);
+            KafkaContainer theContainer = new KafkaContainer(Arrays.asList(topic), this.eventService, consControlMap);
             theContainer.start();
         }
 
@@ -119,7 +146,7 @@ public class Driver {
                             concurrentMaps.get(i).getOrDefault("total-messages",new AtomicLong(0))).get();
                 }
 
-                LOGGER.info("Total messages consumed = {}\n", totalMessages);
+                //LOGGER.info("Total messages consumed = {}\n", totalMessages);
 
             } catch (InterruptedException e) {
                 e.printStackTrace();

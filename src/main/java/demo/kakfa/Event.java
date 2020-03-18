@@ -5,11 +5,14 @@ public class Event {
     private Long price;
     private Long tax;
 
-    private Event(EventBuilder builder) {
+
+    public Event(EventBuilder builder) {
         name = builder.name;
         this.price = builder.price;
         this.tax = builder.tax;
     }
+
+
 
     public String getName() {
         return name;

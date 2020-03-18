@@ -42,7 +42,7 @@ public class BasicTest {
         consControlMap.put("broker", sharedKafkaTestResource.getKafkaConnectString());
         consControlMap.put("total-messages", new AtomicLong(0));
         consControlMap.put("dropped-messages", new AtomicLong(0));
-        KafkaContainer theContainer = new KafkaContainer(Arrays.asList(topicName), consControlMap);
+        KafkaContainer theContainer = new KafkaContainer(Arrays.asList(topicName), null,consControlMap);
         theContainer.start();
 
         AtomicLong totalProducerMessages =  (AtomicLong)producerControlMap.get("total-messages");

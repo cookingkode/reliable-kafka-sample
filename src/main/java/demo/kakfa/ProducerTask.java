@@ -55,11 +55,12 @@ public class ProducerTask implements Callable<Long> {
 
     }
 
-    private boolean sendMessage(long i) throws Exception {
+    private boolean sendMessage(String id) throws Exception {
         Event.EventBuilder eventBuilder = new Event.EventBuilder();
         // correlation id
-        String id = UUID.randomUUID().toString();
-
+        if (id == null) {
+           id = UUID.randomUUID().toString();
+        }
         // static event data  for now
         final Event e = eventBuilder
                 .withName("sales")
@@ -71,21 +72,26 @@ public class ProducerTask implements Callable<Long> {
 
         // add the correlation id to headers
         record.headers().add(new RecordHeader("id", id.getBytes()));
-        //System.out.printf("thread %d message %d\n",Thread.currentThread().getId(), i);
+
 
         //send record
         Future<RecordMetadata> future = this.producer.send(record);
         //make durable
         this.producer.flush();
+        LOGGER.info("message {} sent\n", id);
         //get results
         return extractSendResultAndLog(record, future);
-
     }
 
     public Long call() throws Exception {
         long i;
+        String id = UUID.randomUUID().toString() ;
         for (i = 0; i < this.nMessagesTarget; i++) {
-            if (this.sendMessage(i) ) {
+            if (i%2 != 0) {
+                id = UUID.randomUUID().toString();
+                // send duplicate messages on purpose
+            }
+            if (this.sendMessage(id) ) {
                 totalMessagesCount.getAndIncrement();
             }
             if ("true".equals(controlMap.getOrDefault("stop-producing", "false"))) {

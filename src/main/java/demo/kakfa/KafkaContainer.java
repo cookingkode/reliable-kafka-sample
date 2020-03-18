@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.Base64;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentMap;
@@ -27,9 +28,11 @@ public class KafkaContainer extends Thread {
     }
 
     private AtomicLong totalMessagesCount;
+    private EventService eventService;
 
-    public KafkaContainer( List<String> topics, ConcurrentMap<String, Object> controlMap ) {
+    public KafkaContainer( List<String> topics, EventService service, ConcurrentMap<String, Object> controlMap ) {
         this.controlMap = controlMap;
+        this.eventService = service;
 
         // create a Kafka consumer
         final Properties props = new Properties();
@@ -44,9 +47,9 @@ public class KafkaContainer extends Thread {
         // max.poll.interval.ms - what is the maximum time spent in processing messaging
         props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, controlMap.getOrDefault("maxPollIntervalMs",5000));
         // session.timeout.ms - what is the time by which broker will timeout this consumer
-        props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, controlMap.getOrDefault("sessionTimeoutMs",10000));
+        props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, controlMap.getOrDefault("sessionTimeoutMs",10000));
         // how often will the consumer  heartbeat - should not be more than session.timeout.ms /3
-        props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, controlMap.getOrDefault("heartbeatIntervalMs",1000));
+        props.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, controlMap.getOrDefault("heartbeatIntervalMs",1000));
         /**  Properties for reliable at-least-once processing -- END */
         this.consumer = new KafkaConsumer<String, String>(props);
 
@@ -66,7 +69,7 @@ public class KafkaContainer extends Thread {
             records.forEach(record -> {
                 LOGGER.debug("Received" + getMessageDetailsforLogging(record));
                 try {
-                    String id = record.headers().lastHeader("id").value().toString();
+                    String id = new String(record.headers().lastHeader("id").value());
                     Event event = new com.google.gson.Gson().fromJson(record.value(), Event.class);
                     WorkResponse response = handleWork(id, event);
                     handleWorkResponse(response, id, record);
@@ -78,10 +81,12 @@ public class KafkaContainer extends Thread {
         }
     }
 
-    private WorkResponse handleWork(String Id, Event e) {
+    private WorkResponse handleWork(String id, Event e) {
         // just print
-        LOGGER.info("event received Id : {} ", Id);
-
+        LOGGER.info("event received Id : {} ", id);
+        if (this.eventService != null) { // temp hack for tests
+            this.eventService.addEvent(id, e);
+        }
         //TODO
         return WorkResponse.SUCCESS;
     }
