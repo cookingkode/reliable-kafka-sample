@@ -133,7 +133,7 @@ public class Driver implements CommandLineRunner {
             consControlMap.put("dropped-messages", new AtomicLong(0));
             concurrentMaps.add(consControlMap);
 
-            KafkaContainer theContainer = new KafkaContainer(Arrays.asList(topic), this.eventService, consControlMap);
+            ConsumerTask theContainer = new ConsumerTask(Arrays.asList(topic), this.eventService, consControlMap);
             theContainer.start();
         }
 

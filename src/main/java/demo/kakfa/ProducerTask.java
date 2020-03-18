@@ -38,13 +38,7 @@ public class ProducerTask implements Callable<Long> {
         final Properties props = new Properties();
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        /**  Properties for reliable at-least-once processing -- START */
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, (String) controlMap.get("broker"));
-        props.put(ProducerConfig.ACKS_CONFIG, "all");
-        //props.put(ProducerConfig.RETRIES_CONFIG, 0);
-        props.put(ProducerConfig.LINGER_MS_CONFIG, "0");
-        props.put(ProducerConfig.BATCH_SIZE_CONFIG, "0");
-        /**  Properties for reliable at-least-once processing -- END */
+        setupReliableProductionSetting(props);
 
         this.producer = new KafkaProducer<String, String>(props);
 
@@ -53,6 +47,16 @@ public class ProducerTask implements Callable<Long> {
             totalMessagesCount = new AtomicLong(0); // just for the rest of the code to be safe
         }
 
+    }
+
+    private void setupReliableProductionSetting(Properties props) {
+        /**  Properties for reliable at-least-once processing -- START */
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, (String) controlMap.get("broker"));
+        props.put(ProducerConfig.ACKS_CONFIG, "all");
+        //props.put(ProducerConfig.RETRIES_CONFIG, 0);
+        props.put(ProducerConfig.LINGER_MS_CONFIG, "0");
+        props.put(ProducerConfig.BATCH_SIZE_CONFIG, "0");
+        /**  Properties for reliable at-least-once processing -- END */
     }
 
     private boolean sendMessage(String id) throws Exception {

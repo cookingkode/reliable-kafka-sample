@@ -1,7 +1,7 @@
 package demo.kafka;
 
 import com.salesforce.kafka.test.junit4.SharedKafkaTestResource;
-import demo.kakfa.KafkaContainer;
+import demo.kakfa.ConsumerTask;
 import demo.kakfa.ProducerTask;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -42,7 +42,7 @@ public class BasicTest {
         consControlMap.put("broker", sharedKafkaTestResource.getKafkaConnectString());
         consControlMap.put("total-messages", new AtomicLong(0));
         consControlMap.put("dropped-messages", new AtomicLong(0));
-        KafkaContainer theContainer = new KafkaContainer(Arrays.asList(topicName), null,consControlMap);
+        ConsumerTask theContainer = new ConsumerTask(Arrays.asList(topicName), null,consControlMap);
         theContainer.start();
 
         AtomicLong totalProducerMessages =  (AtomicLong)producerControlMap.get("total-messages");
